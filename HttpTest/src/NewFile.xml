@@ -1,6 +1,6 @@
 <web-app>  
     <servlet>
-      <servlet-name>TestServlet</servlet-name>
+      <servlet-name>com\scut\test\TestServlet</servlet-name>
       <servlet-class>
       com.scut.test.TestServlet
       </servlet-class>

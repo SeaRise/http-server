@@ -139,6 +139,7 @@ public class Handler implements Runnable {
 			buf.flip();
             byte[] bytes = new byte[buf.remaining()];
             buf.get(bytes);
+            
             BufferedReader reader = new BufferedReader(
             		new InputStreamReader(new ByteArrayInputStream(bytes)));
             parser.parse(reader);
@@ -196,7 +197,7 @@ public class Handler implements Runnable {
 	//判断静态资源在否,且发送
 	private boolean getStaticFile(String filePath) throws IOException {
 		File fileToSend = new File("src\\" + filePath);
-		System.out.println("src\\" + filePath);
+	    //System.out.println("src\\" + filePath);
 		
 		//没有文件或为目录
 		if (!(fileToSend.exists() && !fileToSend.isDirectory())) {

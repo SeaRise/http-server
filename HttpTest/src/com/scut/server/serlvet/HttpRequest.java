@@ -1,5 +1,6 @@
 package com.scut.server.serlvet;
 
+import java.io.UnsupportedEncodingException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -29,6 +30,7 @@ public class HttpRequest {
 		method = "POST";
 		attrMap = new HashMap<String, String>();
 		String[] KeyAndValues = body.split("&");
+		
 		for (int i = 0; i < KeyAndValues.length; i++) {
 			String[] KeyAndValue = KeyAndValues[i].split("=");
 			attrMap.put(KeyAndValue[0], KeyAndValue[1]);

@@ -1,5 +1,7 @@
 package com.scut.test;
 
+import java.io.UnsupportedEncodingException;
+
 import com.scut.server.ChannelContext;
 import com.scut.server.serlvet.ChannerHandler;
 import com.scut.server.serlvet.HttpRequest;
@@ -11,6 +13,10 @@ public class TestServlet extends ChannerHandler{
 	public void doPost(HttpRequest request, HttpResponse response,
 			ChannelContext channelContext) {
 		System.out.println("post1");
+		response.writeAndFlush("<html><body><h1>" + 
+		                       request.getParameter("word") + "\r\n" +  
+		                       request.getParameter("hello") + 
+				               "</h1></body></html>");
 	}
 
 	@Override
