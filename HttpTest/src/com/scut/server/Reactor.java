@@ -18,10 +18,9 @@ public class Reactor implements Runnable {
 	private Selector selector = null;
 	private ServerSocketChannel serverSocket = null;
 	private ChannelContext channelContext = null;
+	private XmlScanner scanner = null;
 	
-	ChannerHandler channerHandler;
-	
-	public Reactor(int port, ChannerHandler channerHandler) {
+	public Reactor(int port, String xmlPath) {
 		try {
 			selector = Selector.open();
 			serverSocket = ServerSocketChannel.open();
@@ -31,10 +30,19 @@ public class Reactor implements Runnable {
 			serverSocket.register(selector, SelectionKey.OP_ACCEPT, new Acceptor());
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
+			//close();
 			e.printStackTrace();
 		}
-		this.channerHandler = channerHandler;
 		channelContext = new ChannelContext();
+		scanner = new XmlScanner(xmlPath, channelContext);
+	}
+	
+	public void close() {
+		scanner.close();
+		selector = null;
+		serverSocket = null;
+		channelContext = null;
+		scanner = null;
 	}
 	
 	@Override
@@ -51,6 +59,7 @@ public class Reactor implements Runnable {
 				}
 			}		
 		} catch (IOException e) {
+			close();
 			e.printStackTrace();
 		}
 	}
@@ -72,10 +81,11 @@ public class Reactor implements Runnable {
 				if (c != null) {
 					//num++;
 					//new Handler(selector, c, channerHandler, channelContext, num);
-					new Handler(selector, c, channerHandler, channelContext);
+					new Handler(selector, c, channelContext, scanner);
 				}
 				
 			} catch (IOException e) {
+				close();
 				e.printStackTrace();
 			}
 		}

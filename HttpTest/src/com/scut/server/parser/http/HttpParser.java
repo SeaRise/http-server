@@ -48,6 +48,7 @@ public class HttpParser {
 		
 		try {
 			line = reader.readLine();
+			//System.out.println(line);
 			String[] firsts = line.split(" ");
 			header.put("Method", firsts[0]);
 			//System.out.println(firsts[0]);
@@ -74,6 +75,8 @@ public class HttpParser {
 			}
 			
 			isParsed = true;
+			
+			//System.out.println(header);
 			
 		} catch (IOException e) {
 			e.printStackTrace();

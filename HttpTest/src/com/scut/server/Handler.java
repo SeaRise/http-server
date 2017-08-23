@@ -26,6 +26,9 @@ public class Handler implements Runnable {
 	
 	private HttpParser parser = null;
 	
+	//错误访问的标志
+	private boolean isError = false;
+	
 	static final int READING = 1;
 	static final int SENDING = 0;
 	static final int STOPING = 3;
@@ -36,18 +39,19 @@ public class Handler implements Runnable {
 	
 	private ByteBuffer buf = ByteBuffer.allocate(BUFFER_CAPACITY);
 	
-	private ChannelInf channelInf;
+	private ChannelInf channelInf = null;
 	
 	private LinkedList<String> writeMessQueue = null;
 	
-	private ChannerHandler channerHandler;
+	private ChannerHandler channerHandler = null;
 	
-	private ChannelContext channelContext;
+	private ChannelContext channelContext = null;
+	
+	private XmlScanner scanner = null;
 	
 	Handler(Selector selector, SocketChannel socket, 
-			ChannerHandler channerHandler, 
-			ChannelContext channelContext) {
-		this.selector = selector;
+			ChannelContext channelContext,
+			XmlScanner scanner) {
 		try {
 			socket.configureBlocking(false);
 			sk = socket.register(selector, 
@@ -65,12 +69,15 @@ public class Handler implements Runnable {
 				clientChannel.socket().getLocalPort(),
 				clientChannel.socket().getPort(),
 				this);
-		this.channerHandler = channerHandler;
+		
+		this.selector = selector;
 		this.channelContext = channelContext;
+		this.scanner = scanner;
+		
 		writeMessQueue = new LinkedList<String>();
 		parser = new HttpParser();
 		//this.num = num;
-		active();
+		//active();
 		//selector.wakeup();
 	}
 	
@@ -79,19 +86,15 @@ public class Handler implements Runnable {
 	public void run() {
 		//System.out.println("run");
 		//System.out.println(num);
-		try {
-			if (channerHandler != null) {
-				
-				if (state == READING) {
-					read();
-				}
-				
-				if (state == SENDING) {
-					write();
-				}
-				
-				hasSomethingSend();
+		try {	
+			if (state == READING) {
+				read();
+			}
+			
+			if (state == SENDING) {
+				write();
 			}	
+			hasSomethingSend();
 		} catch (Exception e) {
 			//e.printStackTrace();
 			close();
@@ -108,6 +111,11 @@ public class Handler implements Runnable {
 		}
 		
 		else {
+			//http取消持久化
+			if (!parser.getValue("Connection").equals("keep-alive")) {
+				close();
+			}
+			
 			sk.interestOps(SelectionKey.OP_READ);
 			state = READING;
 		}
@@ -139,10 +147,29 @@ public class Handler implements Runnable {
 		    sk.cancel();
         }
 		
+		String uri = parser.getValue("Uri");
+		//System.out.println(uri);
+		
+		if (uri.equals("/favicon.ico")) {
+			return;
+		}
+		
+		channerHandler = scanner.getServlet(
+				uri.substring(1, uri.length()));
+		//System.out.println(uri.substring(1, uri.length()));
+		if (channerHandler == null) {
+			writeAndFlush("HTTP/1.1 404 Not found\r\n" +
+					      "Content-Length:13" + 
+					      "\r\n\r\n404 Not found\r\n");
+			isError = true;
+			return;
+		}
+		
+		//System.out.println("not null");
 		HttpRequest request = parser.getHttpRequest(channelInf);
 		HttpResponse response = parser.getHttpResponse(channelInf);
 		
-		channerHandler.channelService(request, response, channelContext);
+		channerHandler.service(request, response, channelContext);
 		
 	}
 	
@@ -154,35 +181,52 @@ public class Handler implements Runnable {
 		//System.out.println(writeMessQueue.size());
 	}
 	
-	private void active() {
-		//System.out.println("active");
-		//System.out.println(num);
-		channerHandler.channelActive(
-				channelInf, channelContext);
-		hasSomethingSend();
-	}
-	
 	private void write() throws IOException {
+		if (channerHandler == null && !isError) {
+			return;
+		}
 		//System.out.println("write");
 		//System.out.println(num);
 		SocketChannel clientChannel = (
 				SocketChannel) sk.channel();
 		buf.clear();
 		String mess = writeMessQueue.removeFirst();
-		String writeMess = "HTTP/1.1 200 OK\r\n" + 
-				"Content-Type:text/html; charset=UTF-8\r\n" + 
-				"Content-Length:" + mess.length() + "\r\n\r\n" + 
-				mess;
+		String writeMess;
+		if (isError) {
+			writeMess = mess;
+			isError = false;
+		} else {
+			writeMess = "HTTP/1.1 200 OK\r\n" + 
+					"Content-Type:text/html; charset=UTF-8\r\n" + 
+					"Content-Length:" + (mess.getBytes().length) + "\r\n\r\n" + 
+					mess + "\r\n";
+		}
+		//System.out.println(writeMess);
 		buf.put(writeMess.getBytes());
 		buf.flip();
 		while(buf.hasRemaining()) {
 			clientChannel.write(buf);
-		}		
+		}	
+		
+		//可能有bug
+		channerHandler = null;
 	}
 	
 	void close() {
-		channerHandler.channelDisconnect(
-				channelInf, channelContext);
 		sk.cancel();
+		try {
+			sk.channel().close();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		selector = null;
+		sk = null;
+		parser = null;
+		buf = null;
+		channelInf = null;
+		writeMessQueue = null;
+        channerHandler = null;
+		channelContext = null;
+		scanner = null;
 	}
 }

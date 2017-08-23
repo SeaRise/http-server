@@ -4,7 +4,7 @@ import com.scut.server.ChannelContext;
 
 public class ChannerHandler {
 	
-    public void channelService(HttpRequest request,
+    public void service(HttpRequest request,
     		HttpResponse response, 
     		ChannelContext channelContext) {
     	if (request.getMethod().equals("GET")) {
@@ -15,13 +15,11 @@ public class ChannerHandler {
     	}
     }
     
-    public void channelActive(ChannelInf channelInf, 
-    		ChannelContext channelContext) {
+    public void init(ChannelContext channelContext) {
     	
     }
     
-    public void channelDisconnect(ChannelInf channelInf, 
-    		ChannelContext channelContext) {
+    public void destroy(ChannelContext channelContext) {
     	
     }
     

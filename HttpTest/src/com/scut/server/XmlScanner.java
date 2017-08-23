@@ -17,11 +17,27 @@ public class XmlScanner {
 	
 	private DocumentTree dt = null;
 	
-	public XmlScanner(String xmlPath) {
+	private ChannelContext channelContext = null;
+	
+	public XmlScanner(String xmlPath, ChannelContext channelContext) {
 		servletMap = new HashMap<String, String>(); 
 		serlvetCaseMap = new HashMap<String, ChannerHandler>(); 
 		this.xmlPath = xmlPath;
 		dt = new DocumentTree();
+		this.channelContext = channelContext;
+		scan();
+		//System.out.println(servletMap);
+	}
+	
+	public void close() {
+		//遍历serlvetCaseMap,销毁servlet实例
+		for (ChannerHandler v : serlvetCaseMap.values()) {
+			   v.destroy(channelContext);
+	    }
+		servletMap.clear();
+		servletMap = null;	
+		serlvetCaseMap.clear();
+		serlvetCaseMap = null;
 	}
 	
 	public ChannerHandler getServlet (String servletName) {
@@ -32,8 +48,16 @@ public class XmlScanner {
 		
 		Class c;
 		try {
-			c = Class.forName(servletMap.get(servletName));
+			String servletClass = servletMap.get(servletName);
+			
+			if (servletClass == null) {
+				return null;
+			}
+			
+			c = Class.forName(servletClass);
 			servlet = (ChannerHandler) c.newInstance();
+			servlet.init(channelContext);
+			
 			serlvetCaseMap.put(servletName, servlet);
 		} catch (ClassNotFoundException e) {
 			e.printStackTrace();
@@ -42,6 +66,7 @@ public class XmlScanner {
 		} catch (IllegalAccessException e) {
 			e.printStackTrace();
 		}  
+		
 		return servlet;
 	}
 	
