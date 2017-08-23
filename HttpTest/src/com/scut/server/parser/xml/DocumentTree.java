@@ -1,6 +1,5 @@
 package com.scut.server.parser.xml;
 
-import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -35,12 +34,14 @@ public class DocumentTree {
 		try {
 			while ((c = (char) fis.read()) != '<') {
 				if (c == -1) {
+					fis.close();
 					return;
 				}
 			}
 			
 			while ((c = (char) fis.read()) != '>') {
 				if (c == -1) {
+					fis.close();
 					return;
 				}
 				key.append(c);

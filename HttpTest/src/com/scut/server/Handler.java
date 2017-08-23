@@ -2,9 +2,10 @@ package com.scut.server;
 
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
@@ -21,13 +22,16 @@ public class Handler implements Runnable {
 	
 	//private int num;
 	
-	private Selector selector = null;
+	//private Selector selector = null;
 	private SelectionKey sk = null;
 	
 	private HttpParser parser = null;
 	
 	//错误访问的标志
 	private boolean isError = false;
+	
+	//访问静态资源的标志
+	private boolean isStatic = false;
 	
 	static final int READING = 1;
 	static final int SENDING = 0;
@@ -70,7 +74,7 @@ public class Handler implements Runnable {
 				clientChannel.socket().getPort(),
 				this);
 		
-		this.selector = selector;
+		//this.selector = selector;
 		this.channelContext = channelContext;
 		this.scanner = scanner;
 		
@@ -113,6 +117,7 @@ public class Handler implements Runnable {
 		else {
 			//http取消持久化
 			if (!parser.getValue("Connection").equals("keep-alive")) {
+				
 				close();
 			}
 			
@@ -129,11 +134,6 @@ public class Handler implements Runnable {
 		int count ;
 		buf.clear();
 		parser.clear();
-		StringBuffer sb = new StringBuffer();
-		String line = null;
-		
-		Socket s = clientChannel.socket();
-		
 		
 		while ((count = clientChannel.read(buf)) > 0) {
 			buf.flip();
@@ -154,8 +154,15 @@ public class Handler implements Runnable {
 			return;
 		}
 		
-		channerHandler = scanner.getServlet(
-				uri.substring(1, uri.length()));
+		String path = constructPath(uri.substring(1, uri.length()));
+
+		//System.out.println(path);
+		
+		if ((isStatic = getStaticFile(path)) == true) {
+			return;
+		}
+		
+		channerHandler = scanner.getServlet(path);
 		//System.out.println(uri.substring(1, uri.length()));
 		if (channerHandler == null) {
 			writeAndFlush("HTTP/1.1 404 Not found\r\n" +
@@ -173,6 +180,39 @@ public class Handler implements Runnable {
 		
 	}
 	
+	private String constructPath(String path) {
+		String[] elements = path.split("/");
+		StringBuffer realPath = new StringBuffer();
+		
+		int i;
+		for (i = 0; i < elements.length - 1; i++) {
+			realPath.append(elements[i] + File.separator);
+		}
+		realPath.append(elements[i]);
+		
+		return realPath.toString();
+	}
+	
+	//判断静态资源在否,且发送
+	private boolean getStaticFile(String filePath) throws IOException {
+		File fileToSend = new File("src\\" + filePath);
+		System.out.println("src\\" + filePath);
+		
+		//没有文件或为目录
+		if (!(fileToSend.exists() && !fileToSend.isDirectory())) {
+			return false;
+		}
+
+		FileInputStream fis = new FileInputStream(fileToSend);
+        byte[] buf = new byte[fis.available()];
+        fis.read(buf);
+
+        writeAndFlush(new String(buf));
+        
+        fis.close();
+		return true;
+	}
+	
 	public void writeAndFlush(String mess) {
 		//System.out.println("writeAndFlush");
 		//System.out.println(num);
@@ -182,7 +222,7 @@ public class Handler implements Runnable {
 	}
 	
 	private void write() throws IOException {
-		if (channerHandler == null && !isError) {
+		if (channerHandler == null && !isError && !isStatic) {
 			return;
 		}
 		//System.out.println("write");
@@ -210,16 +250,18 @@ public class Handler implements Runnable {
 		
 		//可能有bug
 		channerHandler = null;
+		isStatic = false;
 	}
 	
 	void close() {
+		
 		sk.cancel();
 		try {
 			sk.channel().close();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		selector = null;
+		//selector = null;
 		sk = null;
 		parser = null;
 		buf = null;

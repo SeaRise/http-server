@@ -71,6 +71,7 @@ public class XmlScanner {
 	}
 	
 	public void scan() {
+		//System.out.println("scan");
 		dt.parse(xmlPath);
 		if (!dt.isParsed()) {
 			System.out.println("scan error");

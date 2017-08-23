@@ -49,7 +49,7 @@ public class Reactor implements Runnable {
 	public void run() {
 		try {
 			while (!Thread.interrupted()) {
-				selector.select(1000);
+				selector.select();
 				//System.out.println("select");
 				Set<SelectionKey> selected = selector.selectedKeys();
 				Iterator<SelectionKey> it = selected.iterator();
