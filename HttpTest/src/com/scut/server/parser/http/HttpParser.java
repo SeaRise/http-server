@@ -71,7 +71,9 @@ public class HttpParser {
 			}
 			
 			if (header.get("Method").equals("POST")) {
-				header.put("Body", reader.readLine());
+				header.put("Body", 
+						java.net.URLDecoder.decode(        //解码post参数
+								reader.readLine(),"UTF-8"));
 			}
 			
 			isParsed = true;

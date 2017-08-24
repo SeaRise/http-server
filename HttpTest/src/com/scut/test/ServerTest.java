@@ -1,6 +1,7 @@
 package com.scut.test;
 
 import java.io.IOException;
+import java.nio.charset.Charset;
 
 import com.scut.server.Reactor;
 
