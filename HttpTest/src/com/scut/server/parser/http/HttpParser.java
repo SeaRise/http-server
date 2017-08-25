@@ -61,6 +61,7 @@ public class HttpParser {
 				if (line.equals("")) {
                     break;
                 }
+				//System.out.println(line);
 				String[] lineElements = line.split(" ");
 				if (lineElements[0].equals("Host:") ||
 					lineElements[0].equals("Connection:")) {

@@ -1,4 +1,4 @@
-package com.scut.test;
+package com.scut.test.reference;
 
 import java.io.BufferedReader;
 import java.io.File;
