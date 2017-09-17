@@ -1,4 +1,4 @@
-package com.scut.server;
+package com.scut.server.muti;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -11,17 +11,12 @@ import java.util.Set;
 
 import com.scut.server.pool.ThreadPool;
 
-public class Reactor implements Runnable {
-	
-	private final int POOL_NUM = 5;
-	
+public class MainReactor implements Runnable {
+
 	private Selector selector = null;
 	private ServerSocketChannel serverSocket = null;
-	private ChannelContext channelContext = null;
-	private XmlScanner scanner = null;
-	private ThreadPool pool = null;
-	
-	public Reactor(int port, String xmlPath) {
+
+	public MainReactor(int port) {
 		try {
 			selector = Selector.open();
 			serverSocket = ServerSocketChannel.open();
@@ -30,21 +25,10 @@ public class Reactor implements Runnable {
 			serverSocket.configureBlocking(false);
 			serverSocket.register(selector, SelectionKey.OP_ACCEPT, new Acceptor());
 		} catch (IOException e) {
-			
-			//close();
+			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		channelContext = new ChannelContext();
-		scanner = new XmlScanner(xmlPath, channelContext);
-		this.pool = ThreadPool.getThreadPool(POOL_NUM);
-	}
-	
-	public void close() {
-		scanner.close();
-		selector = null;
-		serverSocket = null;
-		channelContext = null;
-		scanner = null;
+		
 	}
 	
 	@Override
@@ -52,16 +36,16 @@ public class Reactor implements Runnable {
 		try {
 			while (!Thread.interrupted()) {
 				selector.select(100);
-				
+				//System.out.println("select");
 				Set<SelectionKey> selected = selector.selectedKeys();
 				Iterator<SelectionKey> it = selected.iterator();
 				while (it.hasNext()) {
 					dispatch((SelectionKey) it.next());
 					it.remove();
 				}
+				Thread.yield();
 			}		
 		} catch (IOException e) {
-			close();
 			e.printStackTrace();
 		}
 	}
@@ -79,17 +63,17 @@ public class Reactor implements Runnable {
 		public void run() {
 			try {
 				SocketChannel c = serverSocket.accept();
-
+				//System.out.println("accept");
 				if (c != null) {
-					new Handler(selector, c, channelContext, pool, scanner);
+					
+					AccecptorQueue.getAccecptorQueue().add(c);
+
 				}
 				
 			} catch (IOException e) {
-				close();
 				e.printStackTrace();
 			}
 		}
 		
 	}
-	
 }

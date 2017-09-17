@@ -11,8 +11,10 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.util.LinkedList;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 import com.scut.server.parser.http.HttpParser;
+import com.scut.server.pool.ThreadPool;
 import com.scut.server.serlvet.ChannelInf;
 import com.scut.server.serlvet.ChannerHandler;
 import com.scut.server.serlvet.HttpRequest;
@@ -33,6 +35,9 @@ public class Handler implements Runnable {
 	//访问静态资源的标志
 	private boolean isStatic = false;
 	
+	//访问serlvet的标志
+	private volatile boolean isServlet = false;
+	
 	static final int READING = 1;
 	static final int SENDING = 0;
 	static final int STOPING = 3;
@@ -45,7 +50,7 @@ public class Handler implements Runnable {
 	
 	private ChannelInf channelInf = null;
 	
-	private LinkedList<String> writeMessQueue = null;
+	private ConcurrentLinkedQueue<String> writeMessQueue = null;
 	
 	private ChannerHandler channerHandler = null;
 	
@@ -53,9 +58,11 @@ public class Handler implements Runnable {
 	
 	private XmlScanner scanner = null;
 	
-	Handler(Selector selector, SocketChannel socket, 
+	private ThreadPool pool = null;
+	
+	public Handler(Selector selector, SocketChannel socket, 
 			ChannelContext channelContext,
-			XmlScanner scanner) {
+			ThreadPool pool, XmlScanner scanner) {
 		try {
 			socket.configureBlocking(false);
 			sk = socket.register(selector, 
@@ -77,8 +84,9 @@ public class Handler implements Runnable {
 		//this.selector = selector;
 		this.channelContext = channelContext;
 		this.scanner = scanner;
+		this.pool = pool;
 		
-		writeMessQueue = new LinkedList<String>();
+		writeMessQueue = new ConcurrentLinkedQueue<String>();
 		parser = new HttpParser();
 		//this.num = num;
 		//active();
@@ -117,12 +125,11 @@ public class Handler implements Runnable {
 		else {
 			//http取消持久化
 			if (!parser.getValue("Connection").equals("keep-alive")) {
-				
 				close();
+			} else {
+				sk.interestOps(SelectionKey.OP_READ);
+				state = READING;
 			}
-			
-			sk.interestOps(SelectionKey.OP_READ);
-			state = READING;
 		}
 	}
 	
@@ -146,6 +153,7 @@ public class Handler implements Runnable {
         }
 		if (count < 0) {
 		    sk.cancel();
+		    return;
         }
 		
 		String uri = parser.getValue("Uri");
@@ -177,8 +185,29 @@ public class Handler implements Runnable {
 		HttpRequest request = parser.getHttpRequest(channelInf);
 		HttpResponse response = parser.getHttpResponse(channelInf);
 		
-		channerHandler.service(request, response, channelContext);
+		pool.execute(new workerThread(request, response, channerHandler));
+		//channerHandler.service(request, response, channelContext);
 		
+	}
+	
+    class workerThread implements Runnable {
+		
+    	HttpRequest request = null;
+		HttpResponse response = null;
+		ChannerHandler handler = null;
+		
+		workerThread (HttpRequest request, HttpResponse response, 
+				ChannerHandler channerHandler) {
+			this.request = request;
+			this.response = response;
+			this.handler = channerHandler;
+		}
+		
+		@Override
+		public void run() {
+			handler.service(request, response, channelContext);
+			isServlet = true;
+		}
 	}
 	
 	private String constructPath(String path) {
@@ -217,21 +246,22 @@ public class Handler implements Runnable {
 	public void writeAndFlush(String mess) {
 		//System.out.println("writeAndFlush");
 		//System.out.println(num);
-		writeMessQueue.addLast(mess);
+		writeMessQueue.add(mess);
 		hasSomethingSend();
+		//System.out.println(mess);
 		//System.out.println(writeMessQueue.size());
 	}
 	
 	private void write() throws IOException {
-		if (channerHandler == null && !isError && !isStatic) {
+		if (!isServlet && !isError && !isStatic) {
+			//System.out.println("return");
 			return;
 		}
 		//System.out.println("write");
-		//System.out.println(num);
 		SocketChannel clientChannel = (
 				SocketChannel) sk.channel();
 		buf.clear();
-		String mess = writeMessQueue.removeFirst();
+		String mess = writeMessQueue.poll();
 		String writeMess;
 		if (isError) {
 			writeMess = mess;
@@ -242,7 +272,6 @@ public class Handler implements Runnable {
 					"Content-Length:" + (mess.getBytes().length) + "\r\n\r\n" + 
 					mess + "\r\n";
 		}
-		//System.out.println(writeMess);
 		buf.put(writeMess.getBytes());
 		buf.flip();
 		while(buf.hasRemaining()) {
@@ -250,7 +279,7 @@ public class Handler implements Runnable {
 		}	
 		
 		//可能有bug
-		channerHandler = null;
+		isServlet = false;
 		isStatic = false;
 	}
 	

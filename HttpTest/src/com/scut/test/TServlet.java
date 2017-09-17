@@ -11,7 +11,6 @@ public class TServlet extends ChannerHandler{
 	public void doPost(HttpRequest request, HttpResponse response,
 			ChannelContext channelContext) {
 		// TODO Auto-generated method stub
-		super.doPost(request, response, channelContext);
 		System.out.println("post2");
 	}
 
@@ -19,7 +18,6 @@ public class TServlet extends ChannerHandler{
 	public void doGet(HttpRequest request, HttpResponse response,
 			ChannelContext channelContext) {
 		// TODO Auto-generated method stub
-		super.doGet(request, response, channelContext);
 		System.out.println("get2");
 		response.writeAndFlush("<html><body><h1>我的第2个标题</h1><p>我的第2个段落。</p></body></html>");
 	}

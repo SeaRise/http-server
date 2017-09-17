@@ -1,13 +1,13 @@
 package com.scut.server;
 
-import java.util.HashMap;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class ChannelContext {
 	
-	HashMap<String, Object> ContextMap;
+	ConcurrentHashMap<String, Object> ContextMap;
 	
-	ChannelContext() {
-		ContextMap = new HashMap<String, Object>();
+	public ChannelContext() {
+		ContextMap = new ConcurrentHashMap<String, Object>();
 	}
 	
 	public void put(String name, Object element) {
