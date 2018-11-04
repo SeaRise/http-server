@@ -1,0 +1,14 @@
+<web-app>  
+    <servlet>
+      <servlet-name>TestServlet</servlet-name>
+      <servlet-class>
+      com.httpserver.example.TestServlet
+      </servlet-class>
+    </servlet>
+    <servlet>
+      <servlet-name>TServlet</servlet-name>
+      <servlet-class>
+      com.httpserver.example.TServlet
+      </servlet-class>
+    </servlet>
+</web-app> 
